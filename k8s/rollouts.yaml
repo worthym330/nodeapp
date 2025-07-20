@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: nodejs
-          image: node-mongo-api:latest
+          image: amalmurali/simple-node-mongo:latest
           ports:
             - containerPort: 3000
           env:
