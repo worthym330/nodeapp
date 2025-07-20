@@ -1,0 +1,483 @@
+# Complete Argo Rollouts Installation YAML
+# Apply this file to install Argo Rollouts CRDs and controller
+# kubectl apply -f install-argo-rollouts.yaml
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argo-rollouts
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.1
+  name: rollouts.argoproj.io
+spec:
+  group: argoproj.io
+  names:
+    kind: Rollout
+    listKind: RolloutList
+    plural: rollouts
+    shortNames:
+    - ro
+    singular: rollout
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.replicas
+      name: Desired
+      type: integer
+    - jsonPath: .status.replicas
+      name: Current
+      type: integer
+    - jsonPath: .status.updatedReplicas
+      name: Up-to-date
+      type: integer
+    - jsonPath: .status.availableReplicas
+      name: Available
+      type: integer
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              replicas:
+                format: int32
+                type: integer
+              selector:
+                properties:
+                  matchExpressions:
+                    items:
+                      properties:
+                        key:
+                          type: string
+                        operator:
+                          type: string
+                        values:
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    type: object
+                type: object
+              strategy:
+                properties:
+                  blueGreen:
+                    type: object
+                  canary:
+                    type: object
+                type: object
+              template:
+                type: object
+            required:
+            - selector
+            - template
+            type: object
+          status:
+            properties:
+              availableReplicas:
+                format: int32
+                type: integer
+              replicas:
+                format: int32
+                type: integer
+              updatedReplicas:
+                format: int32
+                type: integer
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      scale:
+        labelSelectorPath: .spec.selector
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.1
+  name: analysisruns.argoproj.io
+spec:
+  group: argoproj.io
+  names:
+    kind: AnalysisRun
+    listKind: AnalysisRunList
+    plural: analysisruns
+    shortNames:
+    - ar
+    singular: analysisrun
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+          status:
+            type: object
+        type: object
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.1
+  name: analysistemplates.argoproj.io
+spec:
+  group: argoproj.io
+  names:
+    kind: AnalysisTemplate
+    listKind: AnalysisTemplateList
+    plural: analysistemplates
+    singular: analysistemplate
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+        type: object
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.1
+  name: clusteranalysistemplates.argoproj.io
+spec:
+  group: argoproj.io
+  names:
+    kind: ClusterAnalysisTemplate
+    listKind: ClusterAnalysisTemplateList
+    plural: clusteranalysistemplates
+    singular: clusteranalysistemplate
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+        type: object
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.1
+  name: experiments.argoproj.io
+spec:
+  group: argoproj.io
+  names:
+    kind: Experiment
+    listKind: ExperimentList
+    plural: experiments
+    singular: experiment
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+          status:
+            type: object
+        type: object
+    served: true
+    storage: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argo-rollouts
+  namespace: argo-rollouts
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argo-rollouts
+rules:
+- apiGroups:
+  - argoproj.io
+  resources:
+  - rollouts
+  - rollouts/status
+  - rollouts/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
+- apiGroups:
+  - argoproj.io
+  resources:
+  - analysisruns
+  - analysisruns/finalizers
+  - experiments
+  - experiments/finalizers
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - argoproj.io
+  resources:
+  - analysistemplates
+  - clusteranalysistemplates
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - replicasets
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  - apps
+  resources:
+  - deployments
+  - podtemplates
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - list
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/eviction
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - podtemplates
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - extensions
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - patch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argo-rollouts
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argo-rollouts
+subjects:
+- kind: ServiceAccount
+  name: argo-rollouts
+  namespace: argo-rollouts
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argo-rollouts-config
+  namespace: argo-rollouts
+data: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argo-rollouts-metrics
+  namespace: argo-rollouts
+  labels:
+    app.kubernetes.io/component: rollouts-controller
+    app.kubernetes.io/name: argo-rollouts-metrics
+    app.kubernetes.io/part-of: argo-rollouts
+spec:
+  ports:
+  - name: metrics
+    port: 8090
+    protocol: TCP
+    targetPort: 8090
+  selector:
+    app.kubernetes.io/name: argo-rollouts
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argo-rollouts
+  namespace: argo-rollouts
+  labels:
+    app.kubernetes.io/component: rollouts-controller
+    app.kubernetes.io/name: argo-rollouts
+    app.kubernetes.io/part-of: argo-rollouts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argo-rollouts
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argo-rollouts
+    spec:
+      serviceAccountName: argo-rollouts
+      containers:
+      - name: argo-rollouts
+        image: quay.io/argoproj/argo-rollouts:v1.6.0
+        ports:
+        - containerPort: 8090
+          name: metrics
+        - containerPort: 8080
+          name: healthz
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: healthz
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: healthz
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 4
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: ROLLOUTS_LOG_LEVEL
+          value: info
+        - name: ROLLOUTS_ENABLE_WEBHOOKS
+          value: "true"
+        - name: ROLLOUTS_INSTANCEID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LEADER_ELECT
+          value: "true"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      securityContext:
+        runAsNonRoot: true
